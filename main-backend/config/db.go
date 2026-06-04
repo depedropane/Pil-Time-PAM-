@@ -14,23 +14,27 @@ import (
 func InitPostgres() *gorm.DB {
 	err := godotenv.Load()
 	if err != nil {
-		// log.Println("No .env file found, relying on environment variables")
 		log.Println("No .env file found, relying on environment variables")
 	}
 
-	dsn := fmt.Sprintf(
-		"host=%s user=%s password=%s dbname=%s port=%s sslmode=%s",
-		os.Getenv("DB_HOST"),
-		os.Getenv("DB_USER"),
-		os.Getenv("DB_PASSWORD"),
-		os.Getenv("DB_NAME"),
-		os.Getenv("DB_PORT"),
-		os.Getenv("DB_SSLMODE"),
-	)
+	var dsn string
+	if dbUrl := os.Getenv("DATABASE_URL"); dbUrl != "" {
+		dsn = dbUrl
+	} else {
+		dsn = fmt.Sprintf(
+			"host=%s user=%s password=%s dbname=%s port=%s sslmode=%s",
+			os.Getenv("DB_HOST"),
+			os.Getenv("DB_USER"),
+			os.Getenv("DB_PASSWORD"),
+			os.Getenv("DB_NAME"),
+			os.Getenv("DB_PORT"),
+			os.Getenv("DB_SSLMODE"),
+		)
+	}
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		panic("Gagal koneksi database!")
+		panic("Gagal koneksi database! Error: " + err.Error())
 	}
 
 	log.Println("Database connected!")
