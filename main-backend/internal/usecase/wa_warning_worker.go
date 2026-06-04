@@ -45,9 +45,9 @@ func (w *WaWarningWorker) CheckAndSendWarnings() {
 		return
 	}
 
-	// Ambil semua jadwal obat yang berstatus 'aktif' atau 'active'
+	// Ambil semua jadwal obat yang berstatus 'aktif' atau 'active' dan bukan obat mandiri
 	var jadwals []domain.Jadwal
-	if err := w.db.Where("status = ? OR status = ?", "aktif", "active").Find(&jadwals).Error; err != nil {
+	if err := w.db.Where("(status = ? OR status = ?) AND kategori_obat != ?", "aktif", "active", "Mandiri").Find(&jadwals).Error; err != nil {
 		log.Println("[WA Worker] Gagal mengambil daftar jadwal aktif dari database:", err)
 		return
 	}

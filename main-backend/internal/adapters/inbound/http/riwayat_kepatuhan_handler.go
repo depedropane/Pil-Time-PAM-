@@ -82,6 +82,28 @@ func (h *TrackingJadwalHandler) GetByPasienID(c *gin.Context) {
 	})
 }
 
+// GetObatStreak - Mengambil jumlah streak kepatuhan meminum obat pasien
+func (h *TrackingJadwalHandler) GetObatStreak(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("pasien_id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
+			Error:   "INVALID_ID",
+			Message: "ID pasien tidak valid",
+		})
+		return
+	}
+
+	s, err := h.usecase.GetObatStreak(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
+			Error:   "FETCH_ERROR",
+			Message: err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"current_streak": s})
+}
+
 // GetMyRiwayat digunakan oleh pasien untuk melihat riwayatnya sendiri.
 // pasien_id diambil dari JWT context (inject oleh JWTPasienMiddleware).
 func (h *TrackingJadwalHandler) GetMyRiwayat(c *gin.Context) {
@@ -103,7 +125,7 @@ func (h *TrackingJadwalHandler) GetMyRiwayat(c *gin.Context) {
 		return
 	}
 
-	trackings, err := h.usecase.GetByPasienID(pasienID)
+	trackings, err := h.usecase.GetByPasienIDIncludingMandiri(pasienID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
 			Error:   "FETCH_ERROR",

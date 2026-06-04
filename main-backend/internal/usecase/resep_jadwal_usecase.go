@@ -62,10 +62,44 @@ func (u *ResepJadwalUsecase) Create(req *dto.CreateResepWithJadwalDTO) error {
 		return err
 	}
 
+	// HANDLE JAM MINUM
+	jamList := req.JamMinum
+	if len(jamList) == 0 {
+		jamList = generateJamMinum(req.FrekuensiPerHari)
+	}
+
+	// Cek jika mulai hari ini dan semua jam minum sudah terlewat, geser ke besok
+	loc, _ := time.LoadLocation("Asia/Jakarta")
+	if loc == nil {
+		loc = time.Local
+	}
+	todayStr := time.Now().In(loc).Format("2006-01-02")
+	if tanggalMulai.Format("2006-01-02") == todayStr {
+		allPassed := true
+		now := time.Now().In(loc)
+		currentHour, currentMin, _ := now.Clock()
+		for _, jam := range jamList {
+			parts := strings.Split(strings.TrimSpace(jam), ":")
+			if len(parts) == 2 {
+				hour, err1 := strconv.Atoi(parts[0])
+				min, err2 := strconv.Atoi(parts[1])
+				if err1 == nil && err2 == nil {
+					if hour > currentHour || (hour == currentHour && min >= currentMin) {
+						allPassed = false
+						break
+					}
+				}
+			}
+		}
+		if allPassed && len(jamList) > 0 {
+			tanggalMulai = tanggalMulai.AddDate(0, 0, 1)
+		}
+	}
+
 	// Handle tanggal_selesai
 	var tanggalSelesai time.Time
 	if req.TipeDurasi == "hari" && req.JumlahHari > 0 {
-		tanggalSelesai = tanggalMulai.AddDate(0, 0, req.JumlahHari)
+		tanggalSelesai = tanggalMulai.AddDate(0, 0, req.JumlahHari - 1)
 	} else if req.TanggalSelesai != "" && req.TanggalSelesai != "null" {
 		tanggalSelesai, err = parseDate(req.TanggalSelesai)
 		if err != nil {
@@ -96,14 +130,6 @@ func (u *ResepJadwalUsecase) Create(req *dto.CreateResepWithJadwalDTO) error {
 	// SIMPAN RESEP
 	if err := u.resepRepo.Create(resep); err != nil {
 		return err
-	}
-
-	// HANDLE JAM MINUM
-	jamList := req.JamMinum
-
-	// fallback kalau kosong
-	if len(jamList) == 0 {
-		jamList = generateJamMinum(req.FrekuensiPerHari)
 	}
 
 	// SIMPAN JADWAL OBAT

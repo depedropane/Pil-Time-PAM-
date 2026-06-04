@@ -174,7 +174,7 @@ func (u *ObatUsecase) Update(id int, req *dto.UpdateObatDTO) (*dto.ObatResponseD
 					
 					if existing.DurasiHari != nil && *existing.DurasiHari > 0 {
 						if tMulai, err := time.Parse("2006-01-02", j.TanggalMulai); err == nil {
-							selesai := tMulai.AddDate(0, 0, *existing.DurasiHari)
+							selesai := tMulai.AddDate(0, 0, *existing.DurasiHari - 1)
 							j.TanggalSelesai = selesai.Format("2006-01-02")
 						}
 					}
@@ -262,10 +262,37 @@ func (u *ObatUsecase) CreateMandiri(req *dto.CreateObatMandiriDTO) (*dto.ObatRes
 	sort.Strings(req.Pengingat)
 	waktuMinum := strings.Join(req.Pengingat, ", ")
 
-	todayStr := time.Now().Format("2006-01-02")
+	loc, _ := time.LoadLocation("Asia/Jakarta")
+	if loc == nil {
+		loc = time.Local
+	}
+	now := time.Now().In(loc)
+	tanggalMulai := now
+
+	// Cek jika seluruh pengingat sudah lewat hari ini, geser mulai ke besok
+	allPassed := true
+	currentHour, currentMin, _ := now.Clock()
+	for _, jam := range req.Pengingat {
+		parts := strings.Split(strings.TrimSpace(jam), ":")
+		if len(parts) == 2 {
+			hour, err1 := strconv.Atoi(parts[0])
+			min, err2 := strconv.Atoi(parts[1])
+			if err1 == nil && err2 == nil {
+				if hour > currentHour || (hour == currentHour && min >= currentMin) {
+					allPassed = false
+					break
+				}
+			}
+		}
+	}
+	if allPassed && len(req.Pengingat) > 0 {
+		tanggalMulai = tanggalMulai.AddDate(0, 0, 1)
+	}
+
+	todayStr := tanggalMulai.Format("2006-01-02")
 	tanggalSelesaiStr := ""
 	if req.DurasiHari > 0 {
-		selesai := time.Now().AddDate(0, 0, req.DurasiHari)
+		selesai := tanggalMulai.AddDate(0, 0, req.DurasiHari - 1)
 		tanggalSelesaiStr = selesai.Format("2006-01-02")
 	}
 

@@ -71,9 +71,12 @@ func (r *trackingJadwalRepoImpl) Delete(id int) error {
 
 // Helper to convert domain to DTO
 func TrackingJadwalToDTO(tracking *domain.TrackingJadwal, namaObat, namaPasien string) *dto.TrackingJadwalDTO {
+	wib := time.FixedZone("WIB", 7*60*60)
+	tanggalWIB := tracking.Tanggal.In(wib)
+
 	jadwalStr := ""
 	if tracking.Tanggal != (time.Time{}) {
-		jadwalStr = tracking.Tanggal.Format("15:04")
+		jadwalStr = tanggalWIB.Format("15:04")
 	}
 
 	return &dto.TrackingJadwalDTO{
@@ -82,7 +85,7 @@ func TrackingJadwalToDTO(tracking *domain.TrackingJadwal, namaObat, namaPasien s
 		PasienID:   tracking.PasienID,
 		NamaPasien: namaPasien,
 		NamaObat:   namaObat,
-		Tanggal:    tracking.Tanggal.Format("2006-01-02"),
+		Tanggal:    tanggalWIB.Format("2006-01-02"),
 		Jadwal:     jadwalStr,
 		WaktuMinum: tracking.WaktuMinum,
 		Status:     tracking.Status,
@@ -91,6 +94,7 @@ func TrackingJadwalToDTO(tracking *domain.TrackingJadwal, namaObat, namaPasien s
 		CreatedAt:  tracking.CreatedAt,
 	}
 }
+
 
 // ==================== RiwayatObat Repository ====================
 

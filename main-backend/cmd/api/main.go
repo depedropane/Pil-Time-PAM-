@@ -173,6 +173,7 @@ func main() {
 
 			// Pasien - Riwayat Kepatuhan (pasien melihat/mencatat riwayatnya sendiri)
 			pasienAuth.GET("/riwayat", trackingHandler.GetMyRiwayat)
+			pasienAuth.GET("/riwayat/streak/:pasien_id", trackingHandler.GetObatStreak)
 			pasienAuth.POST("/riwayat", trackingHandler.CreateMyRiwayat)
 
 			// Pasien - FCM Token Registration

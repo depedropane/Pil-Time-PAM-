@@ -10,6 +10,8 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -78,12 +80,44 @@ func (u *JadwalUsecase) CreateJadwal(req *dto.CreateJadwalDTO) (*dto.JadwalRespo
 	}
 
 	// Hitung tanggal selesai jika tipe_durasi = "hari"
+	tanggalMulaiStr := req.TanggalMulai
 	tanggalSelesai := req.TanggalSelesai
-	if req.TipeDurasi == "hari" && req.JumlahHari > 0 && req.TanggalMulai != "" {
+	if req.TanggalMulai != "" {
 		mulai, err := time.Parse("2006-01-02", req.TanggalMulai)
 		if err == nil {
-			selesai := mulai.AddDate(0, 0, req.JumlahHari)
-			tanggalSelesai = selesai.Format("2006-01-02")
+			loc, _ := time.LoadLocation("Asia/Jakarta")
+			if loc == nil {
+				loc = time.Local
+			}
+			todayStr := time.Now().In(loc).Format("2006-01-02")
+			if mulai.Format("2006-01-02") == todayStr {
+				// cek jika semua jam minum sudah terlewat hari ini
+				allPassed := true
+				now := time.Now().In(loc)
+				currentHour, currentMin, _ := now.Clock()
+				timesList := strings.Split(req.WaktuMinum, ",")
+				for _, jam := range timesList {
+					parts := strings.Split(strings.TrimSpace(jam), ":")
+					if len(parts) == 2 {
+						hour, err1 := strconv.Atoi(parts[0])
+						min, err2 := strconv.Atoi(parts[1])
+						if err1 == nil && err2 == nil {
+							if hour > currentHour || (hour == currentHour && min >= currentMin) {
+								allPassed = false
+								break
+							}
+						}
+					}
+				}
+				if allPassed && len(timesList) > 0 && req.WaktuMinum != "" {
+					mulai = mulai.AddDate(0, 0, 1)
+					tanggalMulaiStr = mulai.Format("2006-01-02")
+				}
+			}
+			if req.TipeDurasi == "hari" && req.JumlahHari > 0 {
+				selesai := mulai.AddDate(0, 0, req.JumlahHari - 1)
+				tanggalSelesai = selesai.Format("2006-01-02")
+			}
 		}
 	}
 
@@ -100,7 +134,7 @@ func (u *JadwalUsecase) CreateJadwal(req *dto.CreateJadwalDTO) (*dto.JadwalRespo
 		Catatan:            req.Catatan,
 		TipeDurasi:         req.TipeDurasi,
 		JumlahHari:         req.JumlahHari,
-		TanggalMulai:       req.TanggalMulai,
+		TanggalMulai:       tanggalMulaiStr,
 		TanggalSelesai:     tanggalSelesai,
 		WaktuReminderPagi:  req.WaktuReminderPagi,
 		WaktuReminderMalam: req.WaktuReminderMalam,

@@ -44,6 +44,9 @@ func (u *TrackingJadwalUsecase) GetAll() ([]dto.TrackingJadwalDTO, error) {
 		jadwal, _ := u.jadwalRepo.GetByID(tracking.JadwalID)
 		namaObat := ""
 		if jadwal != nil {
+			if jadwal.KategoriObat == "Mandiri" {
+				continue
+			}
 			namaObat = jadwal.NamaObat
 		}
 
@@ -67,7 +70,9 @@ func (u *TrackingJadwalUsecase) GetAll() ([]dto.TrackingJadwalDTO, error) {
 
 		jadwalsByPasien := make(map[int][]domain.Jadwal)
 		for _, j := range jadwals {
-			jadwalsByPasien[j.PasienID] = append(jadwalsByPasien[j.PasienID], j)
+			if j.KategoriObat != "Mandiri" {
+				jadwalsByPasien[j.PasienID] = append(jadwalsByPasien[j.PasienID], j)
+			}
 		}
 
 		for pID, pJadwals := range jadwalsByPasien {
@@ -128,6 +133,9 @@ func (u *TrackingJadwalUsecase) GetByPasienID(pasienID int) ([]dto.TrackingJadwa
 		jadwal, _ := u.jadwalRepo.GetByID(tracking.JadwalID)
 		namaObat := ""
 		if jadwal != nil {
+			if jadwal.KategoriObat == "Mandiri" {
+				continue
+			}
 			namaObat = jadwal.NamaObat
 		}
 
@@ -138,7 +146,63 @@ func (u *TrackingJadwalUsecase) GetByPasienID(pasienID int) ([]dto.TrackingJadwa
 	// ── GENERATE DYNAMIC MISSED TRACKINGS ──
 	jadwals, err := u.jadwalRepo.GetByPasienID(pasienID)
 	if err == nil {
-		missedResponses := u.generateDynamicMissedTrackings(trackings, jadwals, namaPasien)
+		var filteredJadwals []domain.Jadwal
+		for _, j := range jadwals {
+			if j.KategoriObat != "Mandiri" {
+				filteredJadwals = append(filteredJadwals, j)
+			}
+		}
+		missedResponses := u.generateDynamicMissedTrackings(trackings, filteredJadwals, namaPasien)
+		responses = append(responses, missedResponses...)
+	}
+
+	// Sort responses by Tanggal descending
+	sort.Slice(responses, func(i, j int) bool {
+		return responses[i].Tanggal > responses[j].Tanggal
+	})
+
+	return responses, nil
+}
+
+// GetByPasienIDIncludingMandiri sama seperti GetByPasienID tetapi MENYERTAKAN
+// tracking obat mandiri. Digunakan oleh endpoint pasien sendiri (/api/pasien/riwayat)
+// agar Flutter bisa merekonstruksi status checkbox obat mandiri setelah refresh.
+func (u *TrackingJadwalUsecase) GetByPasienIDIncludingMandiri(pasienID int) ([]dto.TrackingJadwalDTO, error) {
+	trackings, err := u.trackingRepo.GetByPasienID(pasienID)
+	if err != nil {
+		return nil, err
+	}
+
+	pasien, _ := u.pasienRepo.GetByID(uint(pasienID))
+	namaPasien := ""
+	if pasien != nil {
+		namaPasien = pasien.Nama
+	}
+
+	var responses []dto.TrackingJadwalDTO
+	for _, tracking := range trackings {
+		jadwal, _ := u.jadwalRepo.GetByID(tracking.JadwalID)
+		namaObat := ""
+		if jadwal != nil {
+			namaObat = jadwal.NamaObat
+			// Obat mandiri: isi field Jadwal dengan waktu_minum slot agar
+			// Flutter bisa mencocokkan slotKey = "jadwalId_waktu"
+		}
+
+		dto := persistence.TrackingJadwalToDTO(&tracking, namaObat, namaPasien)
+		responses = append(responses, *dto)
+	}
+
+	// ── GENERATE DYNAMIC MISSED TRACKINGS (non-mandiri only) ──
+	jadwals, err := u.jadwalRepo.GetByPasienID(pasienID)
+	if err == nil {
+		var filteredJadwals []domain.Jadwal
+		for _, j := range jadwals {
+			if j.KategoriObat != "Mandiri" {
+				filteredJadwals = append(filteredJadwals, j)
+			}
+		}
+		missedResponses := u.generateDynamicMissedTrackings(trackings, filteredJadwals, namaPasien)
 		responses = append(responses, missedResponses...)
 	}
 
@@ -287,6 +351,17 @@ func (u *TrackingJadwalUsecase) GetStatistics(pasienID int) (map[string]interfac
 		return nil, err
 	}
 
+	// Filter out trackings related to "Mandiri" jadwals
+	var filteredTrackings []domain.TrackingJadwal
+	for _, t := range trackings {
+		jadwal, _ := u.jadwalRepo.GetByID(t.JadwalID)
+		if jadwal != nil && jadwal.KategoriObat == "Mandiri" {
+			continue
+		}
+		filteredTrackings = append(filteredTrackings, t)
+	}
+	trackings = filteredTrackings
+
 	diminum := 0
 	terlambat := 0
 	terlewat := 0
@@ -306,6 +381,15 @@ func (u *TrackingJadwalUsecase) GetStatistics(pasienID int) (map[string]interfac
 	var jadwals []domain.Jadwal
 	if pasienID > 0 {
 		jadwals, _ = u.jadwalRepo.GetByPasienID(pasienID)
+		// Filter out mandiri jadwals
+		var filteredJadwals []domain.Jadwal
+		for _, j := range jadwals {
+			if j.KategoriObat != "Mandiri" {
+				filteredJadwals = append(filteredJadwals, j)
+			}
+		}
+		jadwals = filteredJadwals
+
 		pasien, _ := u.pasienRepo.GetByID(uint(pasienID))
 		namaPasien := ""
 		if pasien != nil {
@@ -315,6 +399,15 @@ func (u *TrackingJadwalUsecase) GetStatistics(pasienID int) (map[string]interfac
 		terlewat += len(missed)
 	} else {
 		jadwals, _ = u.jadwalRepo.GetAll()
+		// Filter out mandiri jadwals
+		var filteredJadwals []domain.Jadwal
+		for _, j := range jadwals {
+			if j.KategoriObat != "Mandiri" {
+				filteredJadwals = append(filteredJadwals, j)
+			}
+		}
+		jadwals = filteredJadwals
+
 		trackingsByPasien := make(map[int][]domain.TrackingJadwal)
 		for _, t := range trackings {
 			trackingsByPasien[t.PasienID] = append(trackingsByPasien[t.PasienID], t)
@@ -445,3 +538,62 @@ func (u *TrackingJadwalUsecase) generateDynamicMissedTrackings(trackings []domai
 
 	return responses
 }
+
+// GetObatStreak menghitung streak kepatuhan meminum obat pasien
+func (u *TrackingJadwalUsecase) GetObatStreak(pasienID int) (int, error) {
+	trackings, err := u.trackingRepo.GetByPasienID(pasienID)
+	if err != nil {
+		return 0, err
+	}
+
+	// Buat map tanggal -> status list
+	trackingByDate := make(map[string][]string)
+	wib := time.FixedZone("WIB", 7*60*60)
+	for _, t := range trackings {
+		tgl := t.Tanggal.In(wib).Format("2006-01-02")
+		trackingByDate[tgl] = append(trackingByDate[tgl], t.Status)
+	}
+
+	streak := 0
+	dateToCheck := time.Now().In(wib)
+
+	for {
+		tgl := dateToCheck.Format("2006-01-02")
+		statuses, ok := trackingByDate[tgl]
+
+		if !ok {
+			// Jika tidak ada data hari ini, mungkin belum jadwalnya.
+			// Jangan putus streak untuk hari ini. Tapi jika hari kemarin tidak ada, putus.
+			if tgl == time.Now().In(wib).Format("2006-01-02") {
+				dateToCheck = dateToCheck.AddDate(0, 0, -1)
+				continue
+			}
+			break
+		}
+
+		hasTerlewat := false
+		hasDiminum := false
+		for _, s := range statuses {
+			if s == "Terlewat" {
+				hasTerlewat = true
+			}
+			if s == "Diminum" || s == "Terlambat" {
+				hasDiminum = true
+			}
+		}
+
+		if hasTerlewat {
+			break
+		}
+
+		if hasDiminum {
+			streak++
+			dateToCheck = dateToCheck.AddDate(0, 0, -1)
+		} else {
+			break
+		}
+	}
+
+	return streak, nil
+}
+
