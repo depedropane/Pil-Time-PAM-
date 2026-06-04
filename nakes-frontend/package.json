@@ -1,0 +1,27 @@
+{
+  "name": "admin-frontend",
+  "version": "1.0.0",
+  "description": "Admin Panel for Tracking Jadwal & Obat (Nakes Dashboard)",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@lucide/vue": "^1.17.0",
+    "axios": "^1.6.2",
+    "lucide-vue-next": "^1.0.0",
+    "pinia": "^2.1.6",
+    "tailwindcss": "^3.3.5",
+    "vite-plugin-pwa": "^1.2.0",
+    "vue": "^3.3.4",
+    "vue-router": "^4.2.5"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.5",
+    "autoprefixer": "^10.4.16",
+    "postcss": "^8.4.32",
+    "vite": "^8.0.3"
+  }
+}
