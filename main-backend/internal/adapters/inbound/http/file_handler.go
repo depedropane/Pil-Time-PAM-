@@ -156,7 +156,8 @@ func (h *FileHandler) UploadBase64Image(c *gin.Context) {
 		"data": gin.H{
 			"filename": filename,
 			"path":     filepath,
-			"url":      fmt.Sprintf("http://localhost:8080/uploads/obat/%s", filename),
+			// "url":      fmt.Sprintf("http://localhost:8080/uploads/obat/%s", filename),
+			"url":      fmt.Sprintf("/uploads/obat/%s", filename),
 		},
 	})
 }
