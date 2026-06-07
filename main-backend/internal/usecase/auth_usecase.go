@@ -157,6 +157,7 @@ func (u *AuthUsecase) ForgotPassword(req *dto.ForgotPasswordRequest) (*dto.Forgo
 	}
 
 	if err := u.emailService.SendResetCode(req.Email, code); err != nil {
+		fmt.Printf("[SMTP ERROR] Gagal mengirim email ke %s: %v\n", req.Email, err)
 		return nil, errors.New("gagal mengirim email reset password")
 	}
 
