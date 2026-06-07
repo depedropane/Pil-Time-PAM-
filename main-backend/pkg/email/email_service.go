@@ -1,26 +1,19 @@
 package email
 
 import (
-	"crypto/tls"
+	"bytes"
+	"encoding/json"
 	"fmt"
-	"net/smtp"
-	"os"
+	"io"
+	"net/http"
 )
 
 type EmailService struct {
-	smtpHost       string
-	smtpPort       string
-	senderEmail    string
-	senderPassword string
+	// Variabel SMTP tidak akan dipakai lagi, kita langsung pakai Resend API
 }
 
 func NewEmailService() *EmailService {
-	return &EmailService{
-		smtpHost:       os.Getenv("SMTP_HOST"),
-		smtpPort:       os.Getenv("SMTP_PORT"),
-		senderEmail:    os.Getenv("SENDER_EMAIL"),
-		senderPassword: os.Getenv("SENDER_PASSWORD"),
-	}
+	return &EmailService{}
 }
 
 func (e *EmailService) SendResetCode(recipientEmail, resetCode string) error {
@@ -62,60 +55,40 @@ func (e *EmailService) SendResetCode(recipientEmail, resetCode string) error {
 </html>
 	`, resetCode)
 
-	// SMTP configuration
-	auth := smtp.PlainAuth("", e.senderEmail, e.senderPassword, e.smtpHost)
-	addr := fmt.Sprintf("%s:%s", e.smtpHost, e.smtpPort)
-	msg := []byte(fmt.Sprintf("To: %s\r\nSubject: %s\r\nMIME-version: 1.0;\nContent-Type: text/html; charset=\"UTF-8\";\r\n\r\n%s", recipientEmail, subject, body))
-
-	var err error
-	if e.smtpPort == "465" {
-		// Port 465 requires Implicit TLS
-		tlsconfig := &tls.Config{
-			InsecureSkipVerify: false,
-			ServerName:         e.smtpHost,
-		}
-
-		conn, errDial := tls.Dial("tcp", addr, tlsconfig)
-		if errDial != nil {
-			return errDial
-		}
-		defer conn.Close()
-
-		client, errClient := smtp.NewClient(conn, e.smtpHost)
-		if errClient != nil {
-			return errClient
-		}
-		defer client.Quit()
-
-		if err = client.Auth(auth); err != nil {
-			return err
-		}
-		if err = client.Mail(e.senderEmail); err != nil {
-			return err
-		}
-		if err = client.Rcpt(recipientEmail); err != nil {
-			return err
-		}
-
-		w, errData := client.Data()
-		if errData != nil {
-			return errData
-		}
-		_, err = w.Write(msg)
-		if err != nil {
-			return err
-		}
-		err = w.Close()
-	} else {
-		// Default to STARTTLS for port 587
-		err = smtp.SendMail(
-			addr,
-			auth,
-			e.senderEmail,
-			[]string{recipientEmail},
-			msg,
-		)
+	resendAPIKey := "re_4LPFvZP2_9r1FpcT8DDAybXrDK2CNeSj2"
+	
+	payload := map[string]interface{}{
+		// Wajib menggunakan onboarding@resend.dev jika domain belum diverifikasi di Resend
+		"from":    "Pil Time <onboarding@resend.dev>",
+		"to":      []string{recipientEmail},
+		"subject": subject,
+		"html":    body,
 	}
 
-	return err
+	payloadBytes, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("gagal memproses payload email: %v", err)
+	}
+
+	req, err := http.NewRequest("POST", "https://api.resend.com/emails", bytes.NewBuffer(payloadBytes))
+	if err != nil {
+		return fmt.Errorf("gagal membuat request email: %v", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+resendAPIKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("koneksi ke Resend gagal: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		respBody, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("resend error (status %d): %s", resp.StatusCode, string(respBody))
+	}
+
+	return nil
 }
