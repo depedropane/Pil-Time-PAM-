@@ -1,6 +1,7 @@
 package email
 
 import (
+	"crypto/tls"
 	"fmt"
 	"net/smtp"
 	"os"
@@ -64,15 +65,57 @@ func (e *EmailService) SendResetCode(recipientEmail, resetCode string) error {
 	// SMTP configuration
 	auth := smtp.PlainAuth("", e.senderEmail, e.senderPassword, e.smtpHost)
 	addr := fmt.Sprintf("%s:%s", e.smtpHost, e.smtpPort)
+	msg := []byte(fmt.Sprintf("To: %s\r\nSubject: %s\r\nMIME-version: 1.0;\nContent-Type: text/html; charset=\"UTF-8\";\r\n\r\n%s", recipientEmail, subject, body))
 
-	// Send email
-	err := smtp.SendMail(
-		addr,
-		auth,
-		e.senderEmail,
-		[]string{recipientEmail},
-		[]byte(fmt.Sprintf("To: %s\r\nSubject: %s\r\nMIME-version: 1.0;\nContent-Type: text/html; charset=\"UTF-8\";\r\n\r\n%s", recipientEmail, subject, body)),
-	)
+	var err error
+	if e.smtpPort == "465" {
+		// Port 465 requires Implicit TLS
+		tlsconfig := &tls.Config{
+			InsecureSkipVerify: false,
+			ServerName:         e.smtpHost,
+		}
+
+		conn, errDial := tls.Dial("tcp", addr, tlsconfig)
+		if errDial != nil {
+			return errDial
+		}
+		defer conn.Close()
+
+		client, errClient := smtp.NewClient(conn, e.smtpHost)
+		if errClient != nil {
+			return errClient
+		}
+		defer client.Quit()
+
+		if err = client.Auth(auth); err != nil {
+			return err
+		}
+		if err = client.Mail(e.senderEmail); err != nil {
+			return err
+		}
+		if err = client.Rcpt(recipientEmail); err != nil {
+			return err
+		}
+
+		w, errData := client.Data()
+		if errData != nil {
+			return errData
+		}
+		_, err = w.Write(msg)
+		if err != nil {
+			return err
+		}
+		err = w.Close()
+	} else {
+		// Default to STARTTLS for port 587
+		err = smtp.SendMail(
+			addr,
+			auth,
+			e.senderEmail,
+			[]string{recipientEmail},
+			msg,
+		)
+	}
 
 	return err
 }
