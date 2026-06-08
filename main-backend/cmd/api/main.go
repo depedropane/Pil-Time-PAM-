@@ -8,9 +8,12 @@ import (
 	"backend/internal/usecase"
 	"backend/pkg/fcm"
 	"backend/pkg/middleware"
+	"backend/pkg/whatsapp"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -103,6 +106,21 @@ func main() {
 	// 5. API ROUTES
 	api := r.Group("/api")
 	{
+		// Endpoint untuk test WA langsung dari browser (tanpa auth)
+		api.GET("/test-wa", func(c *gin.Context) {
+			phone := c.Query("phone")
+			if phone == "" {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "phone parameter is required (e.g. /api/test-wa?phone=08123456789)"})
+				return
+			}
+			// Memanggil fungsi SendWarning yang sudah ada di package whatsapp
+			whatsapp.SendWarning(phone, "Pasien Uji Coba", "Obat Paracetamol", time.Now().Format("15:04"))
+			c.JSON(http.StatusOK, gin.H{
+				"message": "Pesan peringatan berhasil dikirimkan ke " + phone,
+				"info": "Cek log terminal untuk detail response dari Fonnte",
+			})
+		})
+
 		// --- ADMIN ROUTES ---
 		admin := api.Group("/admin")
 		{
