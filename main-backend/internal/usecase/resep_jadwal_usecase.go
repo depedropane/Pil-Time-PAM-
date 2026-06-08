@@ -112,48 +112,64 @@ func (u *ResepJadwalUsecase) Create(req *dto.CreateResepWithJadwalDTO) error {
 		tanggalSelesai = tanggalMulai.AddDate(0, 0, 30)
 	}
 
-	// BUAT RESEP
-	resep := &domain.ResepObat{
-		PasienID: req.PasienID,
-		ObatID:   req.ObatID,
-		NakesID:  req.NakesID,
-		Dosis:    req.Dosis,
-		Catatan:  req.Catatan,
+	// ITERASI OBAT LIST UNTUK MEMBUAT RESEP DAN JADWAL OBAT MASING-MASING
+	var combinedNamaObatList []string
+	var combinedTakaranList []string
 
-		TanggalMulai:   tanggalMulai,
-		TanggalSelesai: tanggalSelesai,
-
-		FrekuensiPerHari: req.FrekuensiPerHari,
-		AturanKonsumsi:   req.AturanKonsumsi,
-	}
-
-	// SIMPAN RESEP
-	if err := u.resepRepo.Create(resep); err != nil {
-		return err
-	}
-
-	// SIMPAN JADWAL OBAT
-	for _, jam := range jamList {
-
-		parsedTime, err := time.Parse("15:04", jam)
+	for _, obatItem := range req.ObatList {
+		// AMBIL DATA OBAT DARI MASTER OBAT
+		obat, err := u.obatRepo.GetByID(obatItem.ObatID)
 		if err != nil {
 			return err
 		}
+		
+		// Kumpulkan nama dan takaran untuk Jadwal gabungan
+		namaDenganDosis := obat.NamaObat + " (" + obatItem.Dosis + ")"
+		combinedNamaObatList = append(combinedNamaObatList, namaDenganDosis)
+		combinedTakaranList = append(combinedTakaranList, obatItem.Dosis)
 
-		jadwalObat := &domain.JadwalObat{
-			ResepObatID: resep.ResepObatID,
-			PasienID:    req.PasienID,
-			ObatID:      req.ObatID,
-			NakesID:     req.NakesID,
-			JamMinum:    parsedTime,
+		// BUAT RESEP
+		resep := &domain.ResepObat{
+			PasienID: req.PasienID,
+			ObatID:   obatItem.ObatID,
+			NakesID:  req.NakesID,
+			Dosis:    obatItem.Dosis,
+			Catatan:  req.Catatan,
+
+			TanggalMulai:   tanggalMulai,
+			TanggalSelesai: tanggalSelesai,
+
+			FrekuensiPerHari: req.FrekuensiPerHari,
+			AturanKonsumsi:   req.AturanKonsumsi,
 		}
 
-		if err := u.jadwalObatRepo.Create(jadwalObat); err != nil {
+		// SIMPAN RESEP
+		if err := u.resepRepo.Create(resep); err != nil {
 			return err
+		}
+
+		// SIMPAN JADWAL OBAT
+		for _, jam := range jamList {
+			parsedTime, err := time.Parse("15:04", jam)
+			if err != nil {
+				return err
+			}
+
+			jadwalObat := &domain.JadwalObat{
+				ResepObatID: resep.ResepObatID,
+				PasienID:    req.PasienID,
+				ObatID:      obatItem.ObatID,
+				NakesID:     req.NakesID,
+				JamMinum:    parsedTime,
+			}
+
+			if err := u.jadwalObatRepo.Create(jadwalObat); err != nil {
+				return err
+			}
 		}
 	}
 
-	// BUAT JADWAL DI TABEL JADWAL (UNTUK JADWAL-SERVICE)
+	// BUAT 1 JADWAL DI TABEL JADWAL (UNTUK JADWAL-SERVICE)
 	// Hitung jumlah hari
 	jumlahHari := req.JumlahHari
 	if jumlahHari == 0 && !tanggalSelesai.IsZero() && !tanggalMulai.IsZero() {
@@ -172,20 +188,18 @@ func (u *ResepJadwalUsecase) Create(req *dto.CreateResepWithJadwalDTO) error {
 		tglSelesaiStr = tanggalSelesai.Format("2006-01-02")
 	}
 
-	// AMBIL DATA OBAT DARI MASTER OBAT
-	obat, err := u.obatRepo.GetByID(req.ObatID)
-	if err != nil {
-		return err
-	}
+	// Gabungkan nama obat dan takaran
+	namaObatGabungan := strings.Join(combinedNamaObatList, ", ")
+	takaranGabungan := strings.Join(combinedTakaranList, ", ")
 
-	// Buat jadwal entry di tabel jadwal dengan waktu reminder dari jadwal obat
+	// Buat jadwal entry di tabel jadwal
 	jadwalForService := &domain.Jadwal{
 		PasienID:           req.PasienID,
-		NamaObat:           obat.NamaObat,
-		JumlahDosis:        parseInt(req.Dosis),
-		Satuan:             "tablet", // default
-		KategoriObat:       "-",
-		TakaranObat:        req.Dosis,
+		NamaObat:           namaObatGabungan,
+		JumlahDosis:        1,        // Placeholder, detail di NamaObat
+		Satuan:             "custom", // Placeholder
+		KategoriObat:       "multi",
+		TakaranObat:        takaranGabungan,
 		FrekuensiPerHari:   strconv.Itoa(req.FrekuensiPerHari),
 		WaktuMinum:         strings.Join(jamList, ", "),
 		AturanKonsumsi:     req.AturanKonsumsi,

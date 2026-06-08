@@ -1,14 +1,18 @@
 package dto
 
-type CreateResepWithJadwalDTO struct {
-    PasienID int    `json:"pasien_id"`
-    ObatID   int    `json:"obat_id"`
-    NakesID  int    `json:"nakes_id"`
+type ObatDosisDTO struct {
+	ObatID int    `json:"obat_id"`
+	Dosis  string `json:"dosis"`
+}
 
-    Dosis   string `json:"dosis"`
+type CreateResepWithJadwalDTO struct {
+    PasienID int `json:"pasien_id"`
+    NakesID  int `json:"nakes_id"`
+
+    ObatList []ObatDosisDTO `json:"obat_list"`
+
     Catatan string `json:"catatan"`
 
-    // ✅ TAMBAHKAN INI
     TanggalMulai   string `json:"tanggal_mulai"`
     TanggalSelesai string `json:"tanggal_selesai"`
 
