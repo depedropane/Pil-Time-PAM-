@@ -83,7 +83,7 @@ func (w *WaWarningWorker) CheckAndSendWarnings() {
 			elapsedMinutes := int(diff.Minutes())
 
 			// DEBUG LOG: Agar kita bisa melihat di terminal status pengecekan tiap menit
-			log.Printf("[WA Worker] Cek JadwalID %d | Waktu Jadwal: %s | Sudah lewat: %d menit", j.JadwalID, wm, elapsedMinutes)
+			// log.Printf("[WA Worker] Cek JadwalID %d | Waktu Jadwal: %s | Sudah lewat: %d menit", j.JadwalID, wm, elapsedMinutes)
 
 			// Peringatan dikirimkan ketika tersisa 20 menit dari batas waktu 60 menit (artinya di menit ke-40)
 			// Kita menggunakan rentang [40, 60] menit.
