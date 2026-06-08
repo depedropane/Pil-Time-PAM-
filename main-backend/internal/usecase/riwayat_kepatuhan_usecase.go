@@ -227,13 +227,18 @@ func (u *TrackingJadwalUsecase) Create(req *dto.CreateTrackingJadwalDTO) (*dto.T
 	// ── AUTO-DETERMINE STATUS via Compliance Checker ──────────────
 	// Status ditentukan server berdasarkan waktu konfirmasi vs jadwal.
 	// Jika WaktuMinum kosong, gunakan time.Now() sebagai waktu konfirmasi.
-	confirmationTime := time.Now()
+	wibLoc, locErr := utils.GetWIBLocation()
+	if locErr != nil {
+		wibLoc = time.Local
+	}
+	
+	confirmationTime := time.Now().In(wibLoc)
 	if req.WaktuMinum != "" {
 		// Gabungkan tanggal + waktu_minum untuk mendapat timestamp lengkap
 		parsed, parseErr := time.ParseInLocation(
 			"2006-01-02 15:04",
 			req.Tanggal+" "+req.WaktuMinum,
-			time.Local,
+			wibLoc,
 		)
 		if parseErr == nil {
 			confirmationTime = parsed
@@ -244,11 +249,33 @@ func (u *TrackingJadwalUsecase) Create(req *dto.CreateTrackingJadwalDTO) (*dto.T
 	schedStatus := req.Status // fallback ke status dari request
 	jadwal, jadwalErr := u.jadwalRepo.GetByID(req.JadwalID)
 	if jadwalErr == nil && jadwal != nil && jadwal.WaktuMinum != "" {
-		wibLoc, locErr := utils.GetWIBLocation()
-		if locErr == nil {
+		// Cari slot waktu yang sesuai jika ada banyak (dipisah koma)
+		targetSlot := req.WaktuMinum
+		if targetSlot == "" {
+			// Jika dari request kosong, gunakan slot pertama sebagai fallback
+			parts := strings.Split(jadwal.WaktuMinum, ",")
+			if len(parts) > 0 {
+				targetSlot = strings.TrimSpace(parts[0])
+			}
+		} else {
+			// Validasi apakah targetSlot ada di jadwal.WaktuMinum
+			found := false
+			for _, part := range strings.Split(jadwal.WaktuMinum, ",") {
+				if strings.TrimSpace(part) == targetSlot {
+					found = true
+					break
+				}
+			}
+			if !found {
+				// Jika waktu minum tidak ada di jadwal, mungkin ini jadwal yang beda, tapi fallback aja
+				targetSlot = ""
+			}
+		}
+
+		if targetSlot != "" {
 			result, checkErr := utils.CheckComplianceFromStrings(
 				req.Tanggal,
-				jadwal.WaktuMinum,
+				targetSlot,
 				confirmationTime,
 				wibLoc,
 			)
@@ -456,7 +483,7 @@ func (u *TrackingJadwalUsecase) generateDynamicMissedTrackings(trackings []domai
 	var responses []dto.TrackingJadwalDTO
 
 	for _, tracking := range trackings {
-		tanggalStr := tracking.Tanggal.Format("2006-01-02")
+		tanggalStr := tracking.Tanggal.In(loc).Format("2006-01-02")
 		key := fmt.Sprintf("%d_%s", tracking.JadwalID, tanggalStr)
 		existingLogs[key] = true
 	}
