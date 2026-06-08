@@ -29,11 +29,8 @@ func (w *WaWarningWorker) Start() {
 }
 
 func (w *WaWarningWorker) CheckAndSendWarnings() {
-	loc, err := time.LoadLocation("Asia/Jakarta")
-	if err != nil {
-		log.Println("[WA Worker] Gagal memuat timezone Asia/Jakarta:", err)
-		return
-	}
+	// Menggunakan FixedZone agar tidak terjadi error timezone di Windows
+	loc := time.FixedZone("WIB", 7*3600)
 
 	now := time.Now().In(loc)
 	todayStr := now.Format("2006-01-02")
@@ -85,9 +82,12 @@ func (w *WaWarningWorker) CheckAndSendWarnings() {
 			diff := now.Sub(schedTimeFull)
 			elapsedMinutes := int(diff.Minutes())
 
-			// Peringatan dikirimkan tepat pada menit ke-45 setelah waktu jadwal obat dimulai.
-			// Kita menggunakan rentang [45, 60] menit untuk toleransi waktu eksekusi ticker worker.
-			if elapsedMinutes >= 45 && elapsedMinutes < 60 {
+			// DEBUG LOG: Agar kita bisa melihat di terminal status pengecekan tiap menit
+			log.Printf("[WA Worker] Cek JadwalID %d | Waktu Jadwal: %s | Sudah lewat: %d menit", j.JadwalID, wm, elapsedMinutes)
+
+			// Peringatan dikirimkan ketika tersisa 20 menit dari batas waktu 60 menit (artinya di menit ke-40)
+			// Kita menggunakan rentang [40, 60] menit.
+			if elapsedMinutes >= 40 && elapsedMinutes < 60 {
 				
 				// 1. Periksa apakah pasien sudah meminum obat tersebut hari ini
 				var complianceCount int64
