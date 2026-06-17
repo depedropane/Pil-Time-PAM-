@@ -143,13 +143,35 @@ func (h *ObatHandler) GetByID(c *gin.Context) {
 // Delete obat
 func (h *ObatHandler) Delete(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
-	if err := h.usecase.Delete(id); err != nil {
-		c.JSON(http.StatusBadRequest, dto.ErrorResponse{
-			Error: "DELETE_ERROR", Message: err.Error(),
+
+	obat, err := h.usecase.GetByID(id)
+	if err != nil {
+		c.JSON(http.StatusNotFound, dto.ErrorResponse{
+			Error:   "NOT_FOUND",
+			Message: "Obat tidak ditemukan",
 		})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"message": "Obat berhasil dihapus"})
+
+	// Hanya boleh menghapus Obat Mandiri, Obat Master dilarang dihapus
+	if !obat.IsMandiri {
+		c.JSON(http.StatusForbidden, dto.ErrorResponse{
+			Error:   "FORBIDDEN",
+			Message: "Obat adalah data master dan tidak dapat dihapus",
+		})
+		return
+	}
+
+	err = h.usecase.Delete(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
+			Error:   "DELETE_ERROR",
+			Message: "Gagal menghapus obat",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Obat mandiri berhasil dihapus"})
 }
 
 // CreateMandiri menangani pembuatan obat mandiri (independent medication)

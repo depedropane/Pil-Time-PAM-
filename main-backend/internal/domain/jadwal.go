@@ -19,8 +19,6 @@ type Jadwal struct {
 	JumlahHari         int       `gorm:"column:jumlah_hari"`
 	TanggalMulai       string    `gorm:"column:tanggal_mulai"`
 	TanggalSelesai     string    `gorm:"column:tanggal_selesai"`
-	WaktuReminderPagi  string    `gorm:"column:waktu_reminder_pagi"`
-	WaktuReminderMalam string    `gorm:"column:waktu_reminder_malam"`
 	Status             string    `gorm:"column:status;not null"` // 'aktif', 'rutin', etc
 	CreatedAt          time.Time `gorm:"autoCreateTime:milli;column:created_at"`
 	UpdatedAt          time.Time `gorm:"autoUpdateTime:milli;column:updated_at"`

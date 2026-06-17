@@ -311,8 +311,6 @@ func (u *ObatUsecase) CreateMandiri(req *dto.CreateObatMandiriDTO) (*dto.ObatRes
 		JumlahHari:         req.DurasiHari,
 		TanggalMulai:       todayStr,
 		TanggalSelesai:     tanggalSelesaiStr,
-		WaktuReminderPagi:  "",
-		WaktuReminderMalam: "",
 		Status:             "aktif",
 	}
 

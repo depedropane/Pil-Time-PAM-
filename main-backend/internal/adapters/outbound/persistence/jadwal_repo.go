@@ -73,8 +73,6 @@ func (r *jadwalRepoImpl) Update(id int, j *domain.Jadwal) (*domain.Jadwal, error
 		"jumlah_hari":          j.JumlahHari,
 		"tanggal_mulai":        j.TanggalMulai,
 		"tanggal_selesai":      j.TanggalSelesai,
-		"waktu_reminder_pagi":  j.WaktuReminderPagi,
-		"waktu_reminder_malam": j.WaktuReminderMalam,
 		"status":               j.Status,
 	}
 	err := r.db.Model(&domain.Jadwal{}).Where("jadwal_id = ?", id).Updates(updateMap).Error
@@ -108,8 +106,6 @@ func JadwalToResponseDTO(jadwal *domain.Jadwal) *dto.JadwalResponseDTO {
 		JumlahHari:         jadwal.JumlahHari,
 		TanggalMulai:       jadwal.TanggalMulai,
 		TanggalSelesai:     jadwal.TanggalSelesai,
-		WaktuReminderPagi:  jadwal.WaktuReminderPagi,
-		WaktuReminderMalam: jadwal.WaktuReminderMalam,
 		Status:             jadwal.Status,
 		CreatedAt:          jadwal.CreatedAt,
 		UpdatedAt:          jadwal.UpdatedAt,

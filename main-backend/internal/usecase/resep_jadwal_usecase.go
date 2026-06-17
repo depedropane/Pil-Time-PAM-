@@ -208,8 +208,6 @@ func (u *ResepJadwalUsecase) Create(req *dto.CreateResepWithJadwalDTO) error {
 		JumlahHari:         jumlahHari,
 		TanggalMulai:       tglMulaiStr,
 		TanggalSelesai:     tglSelesaiStr,
-		WaktuReminderPagi:  "",
-		WaktuReminderMalam: "",
 		Status:             "aktif",
 	}
 

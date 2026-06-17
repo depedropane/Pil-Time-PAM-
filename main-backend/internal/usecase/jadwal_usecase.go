@@ -136,8 +136,6 @@ func (u *JadwalUsecase) CreateJadwal(req *dto.CreateJadwalDTO) (*dto.JadwalRespo
 		JumlahHari:         req.JumlahHari,
 		TanggalMulai:       tanggalMulaiStr,
 		TanggalSelesai:     tanggalSelesai,
-		WaktuReminderPagi:  req.WaktuReminderPagi,
-		WaktuReminderMalam: req.WaktuReminderMalam,
 		Status:             "aktif",
 	}
 
@@ -166,8 +164,6 @@ func (u *JadwalUsecase) CreateJadwal(req *dto.CreateJadwalDTO) (*dto.JadwalRespo
 			"jumlah_dosis":         fmt.Sprintf("%d", result.JumlahDosis),
 			"satuan":               result.Satuan,
 			"waktu_minum":          result.WaktuMinum,
-			"waktu_reminder_pagi":  result.WaktuReminderPagi,
-			"waktu_reminder_malam": result.WaktuReminderMalam,
 			"kategori_obat":        result.KategoriObat,
 			"aturan_konsumsi":      result.AturanKonsumsi,
 			"tanggal_mulai":        result.TanggalMulai,
@@ -230,12 +226,6 @@ func (u *JadwalUsecase) UpdateJadwal(id int, req *dto.UpdateJadwalDTO) (*dto.Jad
 	}
 	if req.TanggalSelesai != "" {
 		jadwal.TanggalSelesai = req.TanggalSelesai
-	}
-	if req.WaktuReminderPagi != "" {
-		jadwal.WaktuReminderPagi = req.WaktuReminderPagi
-	}
-	if req.WaktuReminderMalam != "" {
-		jadwal.WaktuReminderMalam = req.WaktuReminderMalam
 	}
 	if req.Status != "" {
 		jadwal.Status = req.Status

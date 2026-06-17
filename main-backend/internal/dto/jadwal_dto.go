@@ -17,8 +17,6 @@ type CreateJadwalDTO struct {
 	JumlahHari         int    `json:"jumlah_hari"`
 	TanggalMulai       string `json:"tanggal_mulai"`
 	TanggalSelesai     string `json:"tanggal_selesai"`
-	WaktuReminderPagi  string `json:"waktu_reminder_pagi"`
-	WaktuReminderMalam string `json:"waktu_reminder_malam"`
 	Status             string `json:"status"`
 }
 
@@ -36,8 +34,6 @@ type UpdateJadwalDTO struct {
 	JumlahHari         int    `json:"jumlah_hari"`
 	TanggalMulai       string `json:"tanggal_mulai"`
 	TanggalSelesai     string `json:"tanggal_selesai"`
-	WaktuReminderPagi  string `json:"waktu_reminder_pagi"`
-	WaktuReminderMalam string `json:"waktu_reminder_malam"`
 	Status             string `json:"status"`
 }
 
@@ -58,8 +54,6 @@ type JadwalResponseDTO struct {
 	JumlahHari         int       `json:"jumlah_hari"`
 	TanggalMulai       string    `json:"tanggal_mulai"`
 	TanggalSelesai     string    `json:"tanggal_selesai"`
-	WaktuReminderPagi  string    `json:"waktu_reminder_pagi"`
-	WaktuReminderMalam string    `json:"waktu_reminder_malam"`
 	Status             string    `json:"status"`
 	CreatedAt          time.Time `json:"created_at"`
 	UpdatedAt          time.Time `json:"updated_at"`
