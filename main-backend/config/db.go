@@ -11,7 +11,7 @@ import (
 	"gorm.io/gorm"
 )
 
-func InitPostgres() *gorm.DB {
+func GetDSN() string {
 	err := godotenv.Load()
 	if err != nil {
 		log.Println("No .env file found, relying on environment variables")
@@ -31,6 +31,11 @@ func InitPostgres() *gorm.DB {
 			os.Getenv("DB_SSLMODE"),
 		)
 	}
+	return dsn
+}
+
+func InitPostgres() *gorm.DB {
+	dsn := GetDSN()
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {

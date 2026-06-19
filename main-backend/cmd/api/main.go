@@ -21,6 +21,11 @@ import (
 func main() {
 	// 1. DATABASE INIT
 	db := config.InitPostgres()
+	dsn := config.GetDSN() // Kita ambil DSN untuk whatsmeow
+
+	// Inisialisasi WhatsApp Client
+	whatsapp.InitWA(dsn)
+	defer whatsapp.Disconnect()
 
 	db.AutoMigrate(
 		&domain.ResepObat{},
